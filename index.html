@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meeting Notes Summarizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">AI Meeting Notes Summarizer</h1>
+            <p class="text-md text-gray-600 mt-2">Upload or paste a transcript, provide instructions, and get a summary in seconds.</p>
+        </header>
+
+        <main class="bg-white rounded-lg shadow-md p-6 sm:p-8">
+            
+            <!-- Step 1: Input Transcript -->
+            <div class="mb-6">
+                <label for="transcript" class="block text-lg font-semibold text-gray-700 mb-2">1. Your Meeting Transcript</label>
+                <div class="flex items-center space-x-4 mb-3">
+                    <!-- File Upload Button -->
+                    <label for="fileUpload" class="cursor-pointer bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-sm transition-colors">
+                        Upload File (.txt)
+                    </label>
+                    <input type="file" id="fileUpload" class="hidden" accept=".txt">
+                    <span class="text-gray-500">Or paste directly below</span>
+                </div>
+                <textarea id="transcript" rows="10" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Paste your meeting notes or call transcript here..."></textarea>
+            </div>
+
+            <!-- Step 2: Custom Instructions -->
+            <div class="mb-6">
+                <label for="prompt" class="block text-lg font-semibold text-gray-700 mb-2">2. Add Custom Instructions</label>
+                <input type="text" id="prompt" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., 'Summarize in bullet points for executives' or 'Highlight action items'">
+            </div>
+
+            <!-- Step 3: Generate Summary -->
+            <div class="text-center mb-6">
+                <button id="generateBtn" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 transition-transform transform hover:scale-105 w-full sm:w-auto">
+                    Generate Summary
+                </button>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loader" class="hidden flex justify-center items-center my-6">
+                <div class="loader"></div>
+                <p class="ml-4 text-gray-600">Generating summary, please wait...</p>
+            </div>
+            
+            <!-- Error Message Box -->
+            <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6" role="alert">
+                <strong class="font-bold">Error:</strong>
+                <span class="block sm:inline" id="errorText"></span>
+            </div>
+
+            <!-- Step 4: Generated Summary -->
+            <div id="summarySection" class="hidden">
+                <label for="summary" class="block text-lg font-semibold text-gray-700 mb-2">3. Your Generated Summary (Editable)</label>
+                <div id="summary" contenteditable="true" class="w-full p-4 border border-gray-300 rounded-md bg-gray-50 min-h-[200px] focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"></div>
+            </div>
+
+            <!-- Step 5: Share Summary -->
+            <div id="shareSection" class="hidden mt-8">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4 border-t pt-6">4. Share the Summary</h2>
+                <div class="flex flex-col gap-4">
+                    <input type="email" id="recipientEmail" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Enter recipient's email address">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <button id="shareBtn" class="flex-1 bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50 transition-transform transform hover:scale-105">
+                            Share via Email App
+                        </button>
+                        <button id="shareGmailBtn" class="flex-1 bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-500 focus:ring-opacity-50 transition-transform transform hover:scale-105">
+                            Share via Gmail
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-8 text-gray-500 text-sm">
+            <p>&copy; 2025 AI Meeting Notes Summarizer. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        const generateBtn = document.getElementById('generateBtn');
+        const transcriptInput = document.getElementById('transcript');
+        const promptInput = document.getElementById('prompt');
+        const summaryDiv = document.getElementById('summary');
+        const summarySection = document.getElementById('summarySection');
+        const shareSection = document.getElementById('shareSection');
+        const shareBtn = document.getElementById('shareBtn');
+        const shareGmailBtn = document.getElementById('shareGmailBtn'); // New button
+        const recipientEmailInput = document.getElementById('recipientEmail');
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const fileUpload = document.getElementById('fileUpload');
+
+        // --- File Upload Handler ---
+        fileUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                transcriptInput.value = e.target.result;
+            };
+            reader.onerror = (e) => {
+                console.error("File reading error:", e);
+                alert("Error reading file. Please try again or paste the text manually.");
+            };
+            reader.readAsText(file);
+        });
+
+        // --- Gemini API Call Function ---
+        async function generateSummary(transcript, prompt) {
+            loader.classList.remove('hidden');
+            summarySection.classList.add('hidden');
+            shareSection.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const fullPrompt = `Based on the following transcript, please perform this instruction: "${prompt}".\n\nTranscript:\n${transcript}`;
+            const apiUrl = '/api/summarize';
+            const payload = {
+                contents: [{
+                    parts: [{
+                        text: fullPrompt
+                    }]
+                }]
+            };
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error ? errorData.error.message : 'An unknown error occurred.');
+                }
+                const result = await response.json();
+                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
+                    const generatedText = result.candidates[0].content.parts[0].text;
+                    // --- UPDATED FORMATTING LOGIC ---
+                    const formattedText = generatedText
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                        .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italics
+                        // Find lines starting with * or - and convert to a numbered list
+                        .replace(/^[\*\-]\s(.*$)/gm, '<ol><li>$1</li></ol>')
+                        .replace(/<\/ol>\n<ol>/g, ''); // Merge consecutive lists
+
+                    summaryDiv.innerHTML = formattedText;
+                    summarySection.classList.remove('hidden');
+                    shareSection.classList.remove('hidden');
+                } else {
+                    throw new Error("The AI returned an empty or invalid response.");
+                }
+            } catch (error) {
+                console.error("API Call Failed:", error);
+                errorText.textContent = `Failed to generate summary. ${error.message}`;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // --- Event Listeners ---
+        generateBtn.addEventListener('click', () => {
+            const transcript = transcriptInput.value.trim();
+            const prompt = promptInput.value.trim();
+
+            if (!transcript) {
+                alert("Please upload or paste a transcript first.");
+                return;
+            }
+            if (!prompt) {
+                alert("Please provide a custom instruction/prompt.");
+                return;
+            }
+            generateSummary(transcript, prompt);
+        });
+
+        // Share via Default Email App
+        shareBtn.addEventListener('click', () => {
+            const recipientEmail = recipientEmailInput.value.trim();
+            if (!recipientEmail) {
+                alert("Please enter a recipient's email address.");
+                return;
+            }
+
+            const summaryText = summaryDiv.innerText; 
+            const subject = "Meeting Summary";
+            const body = encodeURIComponent(`Hello,\n\nPlease find the meeting summary below:\n\n${summaryText}\n\nBest regards,`);
+            const mailtoLink = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${body}`;
+            
+            window.location.href = mailtoLink;
+        });
+
+        // Share via Gmail
+        shareGmailBtn.addEventListener('click', () => {
+            const recipientEmail = recipientEmailInput.value.trim();
+            if (!recipientEmail) {
+                alert("Please enter a recipient's email address.");
+                return;
+            }
+            
+            const summaryText = summaryDiv.innerText;
+            const subject = "Meeting Summary";
+            const body = `Hello,\n\nPlease find the meeting summary below:\n\n${summaryText}\n\nBest regards,`;
+
+            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            
+            // Open Gmail in a new tab
+            window.open(gmailUrl, '_blank');
+        });
+
+    </script>
+</body>
+</html>
